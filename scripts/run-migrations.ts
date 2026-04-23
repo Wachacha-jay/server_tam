@@ -51,20 +51,63 @@ async function runMigrations() {
       }
 
       console.log(`⏳ Executing migration: ${file}...`);
-      const sql = await fs.readFile(path.join(migrationsDir, file), 'utf8');
+      let sql = await fs.readFile(path.join(migrationsDir, file), 'utf8');
 
-      // Split by semicolon and filter out empty statements/comments
-      // NOTE: multipleStatements: true is enabled, but we might want to log progress
-      try {
-        await connection.query(sql);
+      // --- IMPROVED SQL SPLITTING ---
+      let currentDelimiter = ';';
+      const lines = sql.split(/\r?\n/);
+      const statements: string[] = [];
+      let currentStatement = '';
+
+      for (let line of lines) {
+        const trimmedLine = line.trim();
         
-        // Record migration
-        await connection.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
-        console.log(`✨ Successfully executed: ${file}`);
-      } catch (err: any) {
-        console.error(`❌ Error executing ${file}:`, err.message);
-        process.exit(1);
+        // Robust DELIMITER detection
+        const delimMatch = trimmedLine.match(/^DELIMITER\s+(.+)$/i);
+        if (delimMatch) {
+          currentDelimiter = delimMatch[1].trim();
+          // console.log(`   [Debug] Changed delimiter to: ${currentDelimiter}`);
+          continue;
+        }
+
+        currentStatement += line + '\n';
+
+        // Check for delimiter at the end of the trimmed line
+        if (trimmedLine.endsWith(currentDelimiter)) {
+          const stmt = currentStatement.trim();
+          // Extract statement without the delimiter
+          const statementToExecute = stmt.slice(0, -currentDelimiter.length).trim();
+          
+          if (statementToExecute) {
+            statements.push(statementToExecute);
+          }
+          currentStatement = '';
+        }
       }
+      
+      if (currentStatement.trim()) {
+        statements.push(currentStatement.trim());
+      }
+
+      // Execute statements
+      for (const stmt of statements) {
+        if (!stmt.trim()) continue;
+        
+        try {
+          await connection.query(stmt);
+        } catch (err: any) {
+          console.error(`❌ Error in ${file} at statement:`);
+          console.error(`--- SQL START ---`);
+          console.error(stmt.substring(0, 500) + (stmt.length > 500 ? '...' : ''));
+          console.error(`--- SQL END ---`);
+          console.error(`Error message: ${err.message}`);
+          process.exit(1);
+        }
+      }
+      
+      // Record migration
+      await connection.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
+      console.log(`✨ Successfully executed: ${file}`);
     }
 
     console.log('\n🏁 All migrations are up to date.');
