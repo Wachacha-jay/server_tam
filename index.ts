@@ -31,11 +31,12 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/purchases', purchasesRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/payroll', payrollRoutes);
-app.use('/api', crudRoutes);
-
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Node Server is Running' });
 });
+
+app.use('/api', crudRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
