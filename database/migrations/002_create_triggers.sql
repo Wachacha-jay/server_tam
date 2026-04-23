@@ -3,24 +3,6 @@
 
 DELIMITER $$
 
--- Function to generate next code
-DROP FUNCTION IF EXISTS generate_next_code$$
-CREATE FUNCTION generate_next_code(prefix VARCHAR(20), table_name VARCHAR(50))
-RETURNS VARCHAR(50)
-DETERMINISTIC
-BEGIN
-    DECLARE next_number INT;
-    DECLARE next_code VARCHAR(50);
-    
-    SET @sql = CONCAT('SELECT COALESCE(MAX(CAST(SUBSTRING(code, ', LENGTH(prefix) + 1, ') AS UNSIGNED)), 0) + 1 INTO @next_num FROM ', table_name, ' WHERE code LIKE "', prefix, '%"');
-    PREPARE stmt FROM @sql;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-    
-    SET next_code = CONCAT(prefix, LPAD(@next_num, 6, '0'));
-    RETURN next_code;
-END$$
-
 -- Trigger for auto-generating product codes
 DROP TRIGGER IF EXISTS before_product_insert$$
 CREATE TRIGGER before_product_insert
@@ -28,7 +10,8 @@ BEFORE INSERT ON products
 FOR EACH ROW
 BEGIN
     IF NEW.code IS NULL OR NEW.code = '' THEN
-        SET NEW.code = generate_next_code('PRD', 'products');
+        SET @next_num = (SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)), 0) + 1 FROM products WHERE code LIKE 'PRD%');
+        SET NEW.code = CONCAT('PRD', LPAD(@next_num, 6, '0'));
     END IF;
 END$$
 
@@ -39,7 +22,8 @@ BEFORE INSERT ON customers
 FOR EACH ROW
 BEGIN
     IF NEW.code IS NULL OR NEW.code = '' THEN
-        SET NEW.code = generate_next_code('CUS', 'customers');
+        SET @next_num = (SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)), 0) + 1 FROM customers WHERE code LIKE 'CUS%');
+        SET NEW.code = CONCAT('CUS', LPAD(@next_num, 6, '0'));
     END IF;
 END$$
 
@@ -50,7 +34,8 @@ BEFORE INSERT ON suppliers
 FOR EACH ROW
 BEGIN
     IF NEW.code IS NULL OR NEW.code = '' THEN
-        SET NEW.code = generate_next_code('SUP', 'suppliers');
+        SET @next_num = (SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)), 0) + 1 FROM suppliers WHERE code LIKE 'SUP%');
+        SET NEW.code = CONCAT('SUP', LPAD(@next_num, 6, '0'));
     END IF;
 END$$
 
@@ -61,7 +46,8 @@ BEFORE INSERT ON employees
 FOR EACH ROW
 BEGIN
     IF NEW.code IS NULL OR NEW.code = '' THEN
-        SET NEW.code = generate_next_code('EMP', 'employees');
+        SET @next_num = (SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)), 0) + 1 FROM employees WHERE code LIKE 'EMP%');
+        SET NEW.code = CONCAT('EMP', LPAD(@next_num, 6, '0'));
     END IF;
 END$$
 
