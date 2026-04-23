@@ -36,7 +36,7 @@ async function runMigrations() {
     const executedMigrations = new Set(rows.map((r: any) => r.name));
 
     // 3. Read migration files
-    const migrationsDir = path.join(__dirname, '../../database/migrations');
+    const migrationsDir = path.join(__dirname, '../database/migrations');
     const files = await fs.readdir(migrationsDir);
     const migrationFiles = files
       .filter(f => f.endsWith('.sql'))

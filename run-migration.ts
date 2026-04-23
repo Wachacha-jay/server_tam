@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 async function runMigration() {
-  const migrationPath = path.join(__dirname, '..', 'database', 'migrations', '009_bank_reconciliation.sql');
+  const migrationPath = path.join(__dirname, 'database', 'migrations', '009_bank_reconciliation.sql');
   const sql = fs.readFileSync(migrationPath, 'utf8');
 
   console.log('Running migration...');
